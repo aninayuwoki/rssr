@@ -563,3 +563,113 @@ app.get('/api/emoji-stats', (req, res) => {
     res.status(500).json({ error: 'Error al obtener estadísticas' });
   }
 });
+
+// Agregar al inicio de tu server.js existente
+const { ImageCompressor, setupImageCompression } = require('./imageCompressor');
+
+
+
+
+// Inicializar compresor
+const imageCompressor = new ImageCompressor('./public/uploads');
+
+// Configurar compresión automática
+setupImageCompression(app, './public/uploads');
+
+// Middleware personalizado para comprimir después de subir
+const compressAfterUpload = async (req, res, next) => {
+    if (req.file) {
+        console.log('🔄 Comprimiendo imagen subida...');
+        
+        const result = await imageCompressor.compressImage(req.file.path);
+        
+        if (result.success) {
+            // Crear thumbnail
+            const thumbnailDir = './public/uploads/thumbs';
+            const fs = require('fs');
+            if (!fs.existsSync(thumbnailDir)) {
+                fs.mkdirSync(thumbnailDir, { recursive: true });
+            }
+            
+            const thumbnailPath = path.join(thumbnailDir, req.file.filename);
+            await imageCompressor.createThumbnail(req.file.path, thumbnailPath);
+            
+            // Agregar información de compresión al request
+            req.file.compressed = true;
+            req.file.thumbnail = `thumbs/${req.file.filename}`;
+            req.file.compressionInfo = result;
+            
+            console.log(`✅ Imagen comprimida: ${result.reduction}% de reducción`);
+        }
+    }
+    next();
+};
+
+// Ejemplo de ruta para subir imagen (modifica según tu código existente)
+app.post('/api/upload', upload.single('imagen'), compressAfterUpload, (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No se subió ninguna imagen' });
+        }
+        
+        const imageData = {
+            filename: req.file.filename,
+            originalName: req.file.originalname,
+            size: req.file.size,
+            thumbnail: req.file.thumbnail || null,
+            compressed: req.file.compressed || false,
+            compressionInfo: req.file.compressionInfo || null,
+            uploadDate: new Date().toISOString()
+        };
+        
+        res.json({
+            success: true,
+            message: 'Imagen subida y comprimida exitosamente',
+            image: imageData
+        });
+        
+    } catch (error) {
+        console.error('Error en upload:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Ruta para servir thumbnails
+app.get('/uploads/thumbs/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname, 'public', 'uploads', 'thumbs', filename);
+    
+    res.sendFile(filePath, (err) => {
+        if (err) {
+            res.status(404).json({ error: 'Thumbnail no encontrado' });
+        }
+    });
+});
+
+// Ruta para obtener estadísticas de almacenamiento
+app.get('/api/storage-stats', async (req, res) => {
+    try {
+        const fs = require('fs').promises;
+        const uploadsDir = './public/uploads';
+        
+        const files = await fs.readdir(uploadsDir);
+        const imageFiles = files.filter(file => 
+            /\.(jpg|jpeg|png|webp|gif|bmp|tiff)$/i.test(file)
+        );
+        
+        let totalSize = 0;
+        for (const file of imageFiles) {
+            const stats = await fs.stat(path.join(uploadsDir, file));
+            totalSize += stats.size;
+        }
+        
+        res.json({
+            totalImages: imageFiles.length,
+            totalSizeMB: (totalSize / 1024 / 1024).toFixed(2),
+            averageSizeKB: imageFiles.length > 0 ? (totalSize / imageFiles.length / 1024).toFixed(2) : 0
+        });
+        
+    } catch (error) {
+        res.status(500).json({ error: 'Error obteniendo estadísticas' });
+    }
+});

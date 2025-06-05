@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración - Compresión de Imágenes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            border-left: 5px solid #667eea;
+        }
+        
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+        
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .action-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .action-card:hover {
+            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .progress-container {
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .log-container {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 30px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            display: none;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        
+        .log-success { background: #d4edda; color: #155724; }
+        .log-error { background: #f8d7da; color: #721c24; }
+        .log-info { background: #d1ecf1; color: #0c5460; }
+        
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Panel de Administración</h1>
+            <p>Sistema de Compresión de Imágenes</p>
+        </div>
+        
+        <div class="content">
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <h3 id="totalImages">-</h3>
+                    <p>Total de Imágenes</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="totalSize">-</h3>
+                    <p>Tamaño Total (MB)</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="averageSize">-</h3>
+                    <p>Tamaño Promedio (KB)</p>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <div class="action-card">
+                    <div class="icon">📊</div>
+                    <h3>Estadísticas</h3>
+                    <p>Ver información detallada sobre el almacenamiento actual</p>
+                    <button class="btn" onclick="loadStats()">Actualizar Estadísticas</button>
+                </div>
+                
+                <div class="action-card">
+                    <div class="icon">🗜️</div>
+                    <h3>Comprimir Todo</h3>
+                    <p>Comprimir todas las imágenes existentes en el servidor</p>
+                    <button class="btn" onclick="compressAllImages()" id="compressBtn">Comprimir Imágenes</button>
+                </div>
+            </div>
+            
+            <div class="progress-container" id="progressContainer">
+                <h4>Progreso de Compresión</h4>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p id="progressText">0%</p>
+            </div>
+            
+            <div class="log-container" id="logContainer">
+                <h4>Log de Actividad</h4>
+                <div id="logContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentProgress = 0;
+        
+        // Cargar estadísticas al iniciar
+        window.addEventListener('load', loadStats);
+        
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/storage-stats');
+                const data = await response.json();
+                
+                document.getElementById('totalImages').textContent = data.totalImages;
+                document.getElementById('totalSize').textContent = data.totalSizeMB;
+                document.getElementById('averageSize').textContent = data.averageSizeKB;
+                
+                addLogEntry('Estadísticas actualizadas', 'info');
+            } catch (error) {
+                addLogEntry('Error cargando estadísticas: ' + error.message, 'error');
+            }
+        }
+        
+        async function compressAllImages() {
+            const btn = document.getElementById('compressBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const logContainer = document.getElementById('logContainer');
+            
+            // Preparar UI
+            btn.disabled = true;
+            btn.textContent = 'Comprimiendo...';
+            progressContainer.style.display = 'block';
+            logContainer.style.display = 'block';
+            
+            clearLog();
+            addLogEntry('Iniciando compresión de imágenes...', 'info');
+            
+            try {
+                const response = await fetch('/api/compress-all-images', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Error en la compresión');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateProgress(100);
+                    addLogEntry('¡Compresión completada exitosamente!', 'success');
+                    
+                    // Mostrar resultados
+                    const successful = data.results.filter(r => r.success).length;
+                    const failed = data.results.filter(r => !r.success).length;
+                    
+                    addLogEntry(`✅ ${successful} imágenes comprimidas`, 'success');
+                    if (failed > 0) {
+                        addLogEntry(`❌ ${failed} errores`, 'error');
+                    }
+                    
+                    // Actualizar estadísticas
+                    setTimeout(loadStats, 1000);
+                } else {
+                    throw new Error(data.error || 'Error desconocido');
+                }
+                
+            } catch (error) {
+                addLogEntry('Error: ' + error.message, 'error');
+            } finally
+    </script>
